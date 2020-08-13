@@ -289,7 +289,7 @@ public final class UnicastProcessor<T> extends FluxProcessor<T, T>
 		if (result == Emission.FAIL_OVERFLOW) {
 			Operators.onDiscard(value, currentContext());
 			//the emitError will onErrorDropped if already terminated
-			emitError(Exceptions.failWithOverflow("Backpressure overflow during Sinks.One#emitValue"));
+			emitError(Exceptions.failWithOverflow("Backpressure overflow during Sinks.Many#emitNext"));
 		}
 		else if (result == Emission.FAIL_CANCELLED) {
 			Operators.onDiscard(value, currentContext());
@@ -309,6 +309,7 @@ public final class UnicastProcessor<T> extends FluxProcessor<T, T>
 		}
 
 		if (!queue.offer(t)) {
+			//FIXME inconsistency here, we return FAIL_OVERFLOW but also fail the subscribers
 			Context ctx = actual.currentContext();
 			Throwable ex = Operators.onOperatorError(null,
 					Exceptions.failWithOverflow(), t, ctx);

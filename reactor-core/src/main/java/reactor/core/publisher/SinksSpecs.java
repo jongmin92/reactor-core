@@ -118,7 +118,7 @@ final class SerializedManySink<T> implements Many<T>, Scannable {
 		if (result == Emission.FAIL_OVERFLOW) {
 			Operators.onDiscard(value, currentContext());
 			//the emitError will onErrorDropped if already terminated
-			emitError(Exceptions.failWithOverflow("Backpressure overflow during Sinks.One#emitValue"));
+			emitError(Exceptions.failWithOverflow("Backpressure overflow during Sinks.Many#emitNext"));
 		}
 		else if (result == Emission.FAIL_CANCELLED) {
 			Operators.onDiscard(value, currentContext());
