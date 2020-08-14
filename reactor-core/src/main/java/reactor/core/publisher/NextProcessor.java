@@ -22,7 +22,8 @@ class NextProcessor<O> extends MonoProcessor<O> implements Sinks.One<O> {
 	volatile NextInner<O>[] subscribers;
 
 	@SuppressWarnings("rawtypes")
-	static final AtomicReferenceFieldUpdater<NextProcessor, NextInner[]> SUBSCRIBERS = AtomicReferenceFieldUpdater.newUpdater(NextProcessor.class, NextInner[].class, "subscribers");
+	static final AtomicReferenceFieldUpdater<NextProcessor, NextInner[]> SUBSCRIBERS =
+			AtomicReferenceFieldUpdater.newUpdater(NextProcessor.class, NextInner[].class, "subscribers");
 
 	@SuppressWarnings("rawtypes")
 	static final NextInner[] EMPTY = new NextInner[0];
@@ -34,7 +35,9 @@ class NextProcessor<O> extends MonoProcessor<O> implements Sinks.One<O> {
 	static final NextInner[] EMPTY_WITH_SOURCE = new NextInner[0];
 
 	volatile     Subscription                                             subscription;
-	static final AtomicReferenceFieldUpdater<NextProcessor, Subscription> UPSTREAM = AtomicReferenceFieldUpdater.newUpdater(NextProcessor.class, Subscription.class, "subscription");
+	@SuppressWarnings("rawtypes")
+	static final AtomicReferenceFieldUpdater<NextProcessor, Subscription> UPSTREAM =
+			AtomicReferenceFieldUpdater.newUpdater(NextProcessor.class, Subscription.class, "subscription");
 
 	CorePublisher<? extends O> source;
 
