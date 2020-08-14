@@ -233,7 +233,6 @@ public final class EmitterProcessor<T> extends FluxProcessor<T, T> implements Si
 	public Emission tryEmitError(Throwable t) {
 		Objects.requireNonNull(t, "onError");
 		if (done) {
-			Operators.onErrorDroppedMulticast(t, subscribers);
 			return Emission.FAIL_TERMINATED;
 		}
 		if (Exceptions.addThrowable(ERROR, this, t)) {
@@ -242,7 +241,6 @@ public final class EmitterProcessor<T> extends FluxProcessor<T, T> implements Si
 			return Emission.OK;
 		}
 		else {
-			Operators.onErrorDroppedMulticast(t, subscribers);
 			return Emission.FAIL_TERMINATED;
 		}
 	}
