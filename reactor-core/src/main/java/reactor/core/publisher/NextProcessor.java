@@ -114,17 +114,41 @@ class NextProcessor<O> extends MonoProcessor<O> implements Sinks.One<O> {
 	}
 
 	@Override
-	public Emission emitEmpty() {
-		return emitValue(null);
+	public final void onComplete() {
+		//no particular error condition handling for onComplete
+		tryEmitEmpty();
+	}
+
+	@Override
+	public void emitEmpty() {
+		//no particular error condition handling for onComplete
+		tryEmitEmpty();
+	}
+
+	@Override
+	public Emission tryEmitEmpty() {
+		return tryEmitValue(null);
+	}
+
+	@Override
+	public final void onError(Throwable cause) {
+		emitError(cause);
+	}
+
+	@Override
+	public void emitError(Throwable error) {
+		Emission result = tryEmitError(error);
+		if (result == Emission.FAIL_TERMINATED) {
+			Operators.onErrorDroppedMulticast(error, subscribers);
+		}
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Emission emitError(Throwable cause) {
+	public Emission tryEmitError(Throwable cause) {
 		Objects.requireNonNull(cause, "onError cannot be null");
 
 		if (UPSTREAM.getAndSet(this, Operators.cancelledSubscription()) == Operators.cancelledSubscription()) {
-			Operators.onErrorDroppedMulticast(cause, subscribers);
 			return Emission.FAIL_TERMINATED;
 		}
 
@@ -140,12 +164,30 @@ class NextProcessor<O> extends MonoProcessor<O> implements Sinks.One<O> {
 	}
 
 	@Override
-	public Emission emitValue(@Nullable O value) {
+	public final void onNext(@Nullable O value) {
+		emitValue(value);
+	}
+
+	@Override
+	public void emitValue(@Nullable O value) {
+		Emission result = tryEmitValue(value);
+		if (result == Emission.FAIL_OVERFLOW) {
+			Operators.onDiscard(value, currentContext());
+			//the emitError will onErrorDropped if already terminated
+			emitError(Exceptions.failWithOverflow("Backpressure overflow during Sinks.One#emitValue"));
+		}
+		else if (result == Emission.FAIL_CANCELLED) {
+			Operators.onDiscard(value, currentContext());
+		}
+		else if (result == Emission.FAIL_TERMINATED && value != null) {
+			Operators.onNextDroppedMulticast(value, subscribers);
+		}
+	}
+
+	@Override
+	public Emission tryEmitValue(@Nullable O value) {
 		Subscription s;
 		if ((s = UPSTREAM.getAndSet(this, Operators.cancelledSubscription())) == Operators.cancelledSubscription()) {
-			if (value != null) {
-				Operators.onNextDroppedMulticast(value, subscribers);
-			}
 			return Emission.FAIL_TERMINATED;
 		}
 
@@ -231,21 +273,6 @@ class NextProcessor<O> extends MonoProcessor<O> implements Sinks.One<O> {
 		if (s != null) {
 			s.cancel();
 		}
-	}
-
-	@Override
-	public final void onComplete() {
-		emitValue(null);
-	}
-
-	@Override
-	public final void onError(Throwable cause) {
-		emitError(cause);
-	}
-
-	@Override
-	public final void onNext(@Nullable O value) {
-		emitValue(value);
 	}
 
 	@Override

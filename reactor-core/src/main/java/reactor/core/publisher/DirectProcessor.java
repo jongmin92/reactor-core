@@ -132,7 +132,18 @@ public final class DirectProcessor<T> extends FluxProcessor<T, T> implements Sin
 	}
 
 	@Override
-	public Emission emitComplete() {
+	public void onComplete() {
+		emitComplete();
+	}
+
+	@Override
+	public void emitComplete() {
+		//no particular error condition handling for onComplete
+		tryEmitComplete();
+	}
+
+	@Override
+	public Emission tryEmitComplete() {
 		@SuppressWarnings("unchecked")
 		DirectInner<T>[] inners = SUBSCRIBERS.getAndSet(this, TERMINATED);
 
@@ -147,14 +158,26 @@ public final class DirectProcessor<T> extends FluxProcessor<T, T> implements Sin
 	}
 
 	@Override
-	public Emission emitError(Throwable t) {
+	public void onError(Throwable throwable) {
+		emitError(throwable);
+	}
+
+	@Override
+	public void emitError(Throwable error) {
+		Emission result = tryEmitError(error);
+		if (result == Emission.FAIL_TERMINATED) {
+			Operators.onErrorDroppedMulticast(error, subscribers);
+		}
+	}
+
+	@Override
+	public Emission tryEmitError(Throwable t) {
 		Objects.requireNonNull(t, "t");
 
 		@SuppressWarnings("unchecked")
 		DirectInner<T>[] inners = SUBSCRIBERS.getAndSet(this, TERMINATED);
 
 		if (inners == TERMINATED) {
-			Operators.onErrorDroppedMulticast(t, subscribers);
 			return Emission.FAIL_TERMINATED;
 		}
 
@@ -166,13 +189,33 @@ public final class DirectProcessor<T> extends FluxProcessor<T, T> implements Sin
 	}
 
 	@Override
-	public Emission emitNext(T t) {
+	public void emitNext(T value) {
+		Emission result = tryEmitNext(value);
+		if (result == Emission.FAIL_OVERFLOW) {
+			Operators.onDiscard(value, currentContext());
+			//the emitError will onErrorDropped if already terminated
+			emitError(Exceptions.failWithOverflow("Backpressure overflow during Sinks.One#emitValue"));
+		}
+		else if (result == Emission.FAIL_CANCELLED) {
+			Operators.onDiscard(value, currentContext());
+		}
+		else if (result == Emission.FAIL_TERMINATED) {
+			Operators.onNextDroppedMulticast(value, subscribers);
+		}
+	}
+
+	@Override
+	public void onNext(T t) {
+		emitNext(t);
+	}
+
+	@Override
+	public Emission tryEmitNext(T t) {
 		Objects.requireNonNull(t, "t");
 
 		DirectInner<T>[] inners = subscribers;
 
 		if (inners == TERMINATED) {
-			Operators.onNextDropped(t, currentContext());
 			return Emission.FAIL_TERMINATED;
 		}
 
@@ -190,21 +233,6 @@ public final class DirectProcessor<T> extends FluxProcessor<T, T> implements Sin
 	@Override
 	protected boolean isIdentityProcessor() {
 		return true;
-	}
-
-	@Override
-	public void onNext(T t) {
-		emitNext(t);
-	}
-
-	@Override
-	public void onError(Throwable t) {
-		emitError(t);
-	}
-
-	@Override
-	public void onComplete() {
-		emitComplete();
 	}
 
 	@Override

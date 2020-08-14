@@ -220,7 +220,18 @@ public final class UnicastProcessor<T> extends FluxProcessor<T, T>
 	}
 
 	@Override
-	public Emission emitComplete() {
+	public void onComplete() {
+		emitComplete();
+	}
+
+	@Override
+	public void emitComplete() {
+		//no particular error condition handling for onComplete
+		tryEmitComplete();
+	}
+
+	@Override
+	public Emission tryEmitComplete() {
 		if (done) {
 			return Emission.FAIL_TERMINATED;
 		}
@@ -237,13 +248,24 @@ public final class UnicastProcessor<T> extends FluxProcessor<T, T>
 	}
 
 	@Override
-	public Emission emitError(Throwable t) {
+	public void onError(Throwable throwable) {
+		emitError(throwable);
+	}
+
+	@Override
+	public void emitError(Throwable error) {
+		Emission result = tryEmitError(error);
+		if (result == Emission.FAIL_TERMINATED) {
+			Operators.onErrorDropped(error, currentContext());
+		}
+	}
+
+	@Override
+	public Emission tryEmitError(Throwable t) {
 		if (done) {
-			Operators.onErrorDropped(t, currentContext());
 			return Emission.FAIL_TERMINATED;
 		}
 		if (cancelled) {
-			Operators.onErrorDropped(t, currentContext());
 			return Emission.FAIL_CANCELLED;
 		}
 
@@ -257,20 +279,39 @@ public final class UnicastProcessor<T> extends FluxProcessor<T, T>
 	}
 
 	@Override
-	public Emission emitNext(T t) {
+	public void onNext(T t) {
+		emitNext(t);
+	}
+
+	@Override
+	public void emitNext(T value) {
+		Emission result = tryEmitNext(value);
+		if (result == Emission.FAIL_OVERFLOW) {
+			Operators.onDiscard(value, currentContext());
+			//the emitError will onErrorDropped if already terminated
+			emitError(Exceptions.failWithOverflow("Backpressure overflow during Sinks.One#emitValue"));
+		}
+		else if (result == Emission.FAIL_CANCELLED) {
+			Operators.onDiscard(value, currentContext());
+		}
+		else if (result == Emission.FAIL_TERMINATED) {
+			Operators.onNextDropped(value, currentContext());
+		}
+	}
+
+	@Override
+	public Emission tryEmitNext(T t) {
 		if (done) {
-			Operators.onNextDropped(t, currentContext());
 			return Emission.FAIL_TERMINATED;
 		}
 		if (cancelled) {
-			Operators.onNextDropped(t, currentContext());
 			return Emission.FAIL_CANCELLED;
 		}
 
 		if (!queue.offer(t)) {
 			Context ctx = actual.currentContext();
 			Throwable ex = Operators.onOperatorError(null,
-													 Exceptions.failWithOverflow(), t, ctx);
+					Exceptions.failWithOverflow(), t, ctx);
 			if (onOverflow != null) {
 				try {
 					onOverflow.accept(t);
@@ -280,8 +321,7 @@ public final class UnicastProcessor<T> extends FluxProcessor<T, T>
 					ex.initCause(e);
 				}
 			}
-			Operators.onDiscard(t, ctx);
-			onError(ex);
+			onError(ex); //FIXME should this really error ??
 			return Emission.FAIL_OVERFLOW;
 		}
 		drain(t);
@@ -462,21 +502,6 @@ public final class UnicastProcessor<T> extends FluxProcessor<T, T>
 	public Context currentContext() {
 		CoreSubscriber<? super T> actual = this.actual;
 		return actual != null ? actual.currentContext() : Context.empty();
-	}
-
-	@Override
-	public void onNext(T t) {
-		emitNext(t);
-	}
-
-	@Override
-	public void onError(Throwable t) {
-		emitError(t);
-	}
-
-	@Override
-	public void onComplete() {
-		emitComplete();
 	}
 
 	@Override

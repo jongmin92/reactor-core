@@ -49,17 +49,17 @@ final class DelegateSinkOneMonoProcessor<IN> extends MonoProcessor<IN> {
 
 	@Override
 	public void onComplete() {
-		sink.emitEmpty();
+		sink.tryEmitEmpty();
 	}
 
 	@Override
 	public void onError(Throwable t) {
-		sink.emitError(t);
+		sink.tryEmitError(t);
 	}
 
 	@Override
 	public void onNext(@Nullable IN in) {
-		sink.emitValue(in);
+		sink.tryEmitValue(in);
 	}
 
 	@Override
