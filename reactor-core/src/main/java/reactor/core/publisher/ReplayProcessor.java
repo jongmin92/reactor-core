@@ -437,13 +437,16 @@ public final class ReplayProcessor<T> extends FluxProcessor<T, T>
 
 	@Override
 	public void onComplete() {
-		emitComplete();
+		//no particular error condition handling for onComplete
+		@SuppressWarnings("unused")
+		Emission emission = tryEmitComplete();
 	}
 
 	@Override
 	public void emitComplete() {
 		//no particular error condition handling for onComplete
-		tryEmitComplete();
+		@SuppressWarnings("unused")
+		Emission emission = tryEmitComplete();
 	}
 
 	@Override

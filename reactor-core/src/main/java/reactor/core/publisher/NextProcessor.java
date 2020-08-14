@@ -116,13 +116,15 @@ class NextProcessor<O> extends MonoProcessor<O> implements Sinks.One<O> {
 	@Override
 	public final void onComplete() {
 		//no particular error condition handling for onComplete
-		tryEmitEmpty();
+		@SuppressWarnings("unused")
+		Emission emission = tryEmitEmpty();
 	}
 
 	@Override
 	public void emitEmpty() {
 		//no particular error condition handling for onComplete
-		tryEmitEmpty();
+		@SuppressWarnings("unused")
+		Emission emission = tryEmitEmpty();
 	}
 
 	@Override

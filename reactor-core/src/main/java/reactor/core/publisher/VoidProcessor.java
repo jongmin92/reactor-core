@@ -98,13 +98,16 @@ final class VoidProcessor<T> extends MonoProcessor<T> implements Sinks.One<T> {
 
 	@Override
 	public final void onComplete() {
-		emitEmpty();
+		//no particular error condition handling for onComplete
+		@SuppressWarnings("unused")
+		Emission emission = tryEmitEmpty();
 	}
 
 	@Override
 	public void emitEmpty() {
 		//no particular error condition handling for onComplete
-		tryEmitEmpty();
+		@SuppressWarnings("unused")
+		Emission emission = tryEmitEmpty();
 	}
 
 	@Override

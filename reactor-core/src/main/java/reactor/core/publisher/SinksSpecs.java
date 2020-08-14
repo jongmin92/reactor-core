@@ -73,7 +73,8 @@ final class SerializedManySink<T> implements Many<T>, Scannable {
 	@Override
 	public void emitComplete() {
 		//no particular error condition handling for onComplete
-		tryEmitComplete();
+		@SuppressWarnings("unused")
+		Emission emission = tryEmitComplete();
 	}
 
 	@Override
