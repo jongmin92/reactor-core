@@ -170,17 +170,20 @@ class NextProcessor<O> extends MonoProcessor<O> implements Sinks.One<O> {
 
 	@Override
 	public void emitValue(@Nullable O value) {
-		Emission result = tryEmitValue(value);
-		if (result == Emission.FAIL_OVERFLOW) {
-			Operators.onDiscard(value, currentContext());
-			//the emitError will onErrorDropped if already terminated
-			emitError(Exceptions.failWithOverflow("Backpressure overflow during Sinks.One#emitValue"));
-		}
-		else if (result == Emission.FAIL_CANCELLED) {
-			Operators.onDiscard(value, currentContext());
-		}
-		else if (result == Emission.FAIL_TERMINATED && value != null) {
-			Operators.onNextDroppedMulticast(value, subscribers);
+		switch(tryEmitValue(value)) {
+			case FAIL_OVERFLOW:
+				Operators.onDiscard(value, currentContext());
+				//the emitError will onErrorDropped if already terminated
+				emitError(Exceptions.failWithOverflow("Backpressure overflow during Sinks.One#emitValue"));
+				break;
+			case FAIL_CANCELLED:
+				Operators.onDiscard(value, currentContext());
+				break;
+			case FAIL_TERMINATED:
+				Operators.onNextDroppedMulticast(value, subscribers);
+				break;
+			case OK:
+				break;
 		}
 	}
 
